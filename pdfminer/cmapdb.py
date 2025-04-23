@@ -1,4 +1,4 @@
-""" Adobe character mapping (CMap) support.
+"""Adobe character mapping (CMap) support.
 
 CMaps provide the mapping between character codes and Unicode
 code-points to character ids (CIDs).
@@ -25,23 +25,24 @@ from typing import (
     List,
     MutableMapping,
     Optional,
+    Set,
     TextIO,
     Tuple,
     Union,
     cast,
-    Set,
 )
 
 from .encodingdb import name2unicode
-from .psparser import KWD
-from .psparser import PSEOF
-from .psparser import PSKeyword
-from .psparser import PSLiteral
-from .psparser import PSStackParser
-from .psparser import PSSyntaxError
-from .psparser import literal_name
-from .utils import choplist
-from .utils import nunpack
+from .psparser import (
+    KWD,
+    PSEOF,
+    PSKeyword,
+    PSLiteral,
+    PSStackParser,
+    PSSyntaxError,
+    literal_name,
+)
+from .utils import choplist, nunpack
 
 log = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class CMap(CMapBase):
         assert isinstance(cmap, CMap), str(type(cmap))
 
         def copy(dst: Dict[int, object], src: Dict[int, object]) -> None:
-            for (k, v) in src.items():
+            for k, v in src.items():
                 if isinstance(v, dict):
                     d: Dict[int, object] = {}
                     dst[k] = d
@@ -121,7 +122,7 @@ class CMap(CMapBase):
         if code2cid is None:
             code2cid = self.code2cid
             code = ()
-        for (k, v) in sorted(code2cid.items()):
+        for k, v in sorted(code2cid.items()):
             c = code + (k,)
             if isinstance(v, int):
                 out.write("code %r = cid %d\n" % (c, v))
@@ -160,7 +161,7 @@ class UnicodeMap(CMapBase):
         return self.cid2unichr[cid]
 
     def dump(self, out: TextIO = sys.stdout) -> None:
-        for (k, v) in sorted(self.cid2unichr.items()):
+        for k, v in sorted(self.cid2unichr.items()):
             out.write("cid %d = unicode %r\n" % (k, v))
 
 
@@ -326,7 +327,7 @@ class CMapParser(PSStackParser[PSKeyword]):
         elif token is self.KEYWORD_ENDCMAP:
             self._in_cmap = False
             objs = [obj for (__, obj) in self.popall()]
-            for (cid, code) in choplist(2, objs):
+            for cid, code in choplist(2, objs):
                 if isinstance(cid, bytes) and isinstance(code, bytes):
                     self.cmap.add_cid2unichr(nunpack(cid), code)
             return
@@ -336,8 +337,11 @@ class CMapParser(PSStackParser[PSKeyword]):
 
         if token is self.KEYWORD_DEF:
             try:
-                ((_, k), (_, v)) = self.pop(2)
-                self.cmap.set_attr(literal_name(k), v)
+                # Store in 'items' and check length to prevent unpacking errors in case pop(2) returns fewer items than expected
+                items = self.pop(2)
+                if len(items) < 2:
+                    return
+                ((_, k), (_, v)) = items
             except PSSyntaxError:
                 pass
             return
@@ -365,7 +369,7 @@ class CMapParser(PSStackParser[PSKeyword]):
 
         if token is self.KEYWORD_ENDCIDRANGE:
             objs = [obj for (__, obj) in self.popall()]
-            for (start_byte, end_byte, cid) in choplist(3, objs):
+            for start_byte, end_byte, cid in choplist(3, objs):
                 if not isinstance(start_byte, bytes):
                     self._warn_once("The start object of begincidrange is not a byte.")
                     continue
@@ -405,7 +409,7 @@ class CMapParser(PSStackParser[PSKeyword]):
 
         if token is self.KEYWORD_ENDCIDCHAR:
             objs = [obj for (__, obj) in self.popall()]
-            for (cid, code) in choplist(2, objs):
+            for cid, code in choplist(2, objs):
                 if isinstance(code, bytes) and isinstance(cid, int):
                     self.cmap.add_cid2unichr(cid, code)
             return
@@ -416,7 +420,7 @@ class CMapParser(PSStackParser[PSKeyword]):
 
         if token is self.KEYWORD_ENDBFRANGE:
             objs = [obj for (__, obj) in self.popall()]
-            for (start_byte, end_byte, code) in choplist(3, objs):
+            for start_byte, end_byte, code in choplist(3, objs):
                 if not isinstance(start_byte, bytes):
                     self._warn_once("The start object is not a byte.")
                     continue
@@ -453,7 +457,7 @@ class CMapParser(PSStackParser[PSKeyword]):
 
         if token is self.KEYWORD_ENDBFCHAR:
             objs = [obj for (__, obj) in self.popall()]
-            for (cid, code) in choplist(2, objs):
+            for cid, code in choplist(2, objs):
                 if isinstance(cid, bytes) and isinstance(code, bytes):
                     self.cmap.add_cid2unichr(nunpack(cid), code)
             return
