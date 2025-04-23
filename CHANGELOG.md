@@ -4,6 +4,12 @@ All notable changes in pdfminer.six will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [20240423]
+
+### Fixed
+
+- Add defensive check in cmapdb.py to prevent unpacking errors when pop(2) returns fewer items than expected
+
 ## [20221118]
 
 ### Updated
